@@ -1,0 +1,621 @@
+{
+  "info": {
+    "name": "Digitinary Customer Care Portal",
+    "_postman_id": "digitinary-ccp-collection",
+    "description": "Complete test collection for all Parts (1-6).\n\nRun order:\n1. Login as Admin\n2. Login as Customer1\n3. All other requests use saved tokens automatically.\n\nCredentials:\n- Admin: admin / admin123\n- Customer: customer1 / password123 (owns customer id=3)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "adminToken",        "value": "", "type": "string" },
+    { "key": "customerToken",     "value": "", "type": "string" },
+    { "key": "customerId",        "value": "3", "type": "string" },
+    { "key": "newOrderId",        "value": "1", "type": "string" },
+    { "key": "newTicketId",       "value": "", "type": "string" },
+    { "key": "createdCustomerId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login as Admin",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "var json = pm.response.json();",
+            "pm.collectionVariables.set('adminToken', json.token);",
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Token returned', () => pm.expect(json.token).to.be.a('string'));",
+            "pm.test('ExpiresIn is 3600', () => pm.expect(json.expiresIn).to.equal(3600));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"admin123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/auth/login", "host": ["http://localhost:8080"], "path": ["api","auth","login"] }
+          }
+        },
+        {
+          "name": "Login as Customer1",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "var json = pm.response.json();",
+            "pm.collectionVariables.set('customerToken', json.token);",
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Token returned', () => pm.expect(json.token).to.be.a('string'));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"customer1\",\n  \"password\": \"password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/auth/login", "host": ["http://localhost:8080"], "path": ["api","auth","login"] }
+          }
+        },
+        {
+          "name": "Register New User",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 201 Created', () => pm.response.to.have.status(201));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\",\n  \"password\": \"newpass123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/auth/register", "host": ["http://localhost:8080"], "path": ["api","auth","register"] }
+          }
+        },
+        {
+          "name": "Wrong Password - Expect 401",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"wrongpassword\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/auth/login", "host": ["http://localhost:8080"], "path": ["api","auth","login"] }
+          }
+        },
+        {
+          "name": "No Token - Expect 401",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 401 Unauthorized', () => pm.response.to.have.status(401));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:8080/api/customers", "host": ["http://localhost:8080"], "path": ["api","customers"] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Customers - CRUD",
+      "item": [
+        {
+          "name": "List All Customers - ADMIN",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "http://localhost:8080/api/customers", "host": ["http://localhost:8080"], "path": ["api","customers"] }
+          }
+        },
+        {
+          "name": "List All Customers as CUSTOMER - Expect 403",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 403 Forbidden', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerToken}}" }],
+            "url": { "raw": "http://localhost:8080/api/customers", "host": ["http://localhost:8080"], "path": ["api","customers"] }
+          }
+        },
+        {
+          "name": "Get Customer by ID",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Has id field', () => pm.expect(pm.response.json().id).to.exist);"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "http://localhost:8080/api/customers/{{customerId}}", "host": ["http://localhost:8080"], "path": ["api","customers","{{customerId}}"] }
+          }
+        },
+        {
+          "name": "Get Non-Existent Customer - Expect 404",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 404 Not Found', () => pm.response.to.have.status(404));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "http://localhost:8080/api/customers/99999", "host": ["http://localhost:8080"], "path": ["api","customers","99999"] }
+          }
+        },
+        {
+          "name": "Create Customer - ADMIN",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+            "pm.test('Has Location header', () => pm.expect(pm.response.headers.get('Location')).to.include('/api/customers/'));",
+            "var json = pm.response.json();",
+            "pm.test('Has id', () => pm.expect(json.id).to.be.a('number'));",
+            "pm.collectionVariables.set('createdCustomerId', json.id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test.new99@example.com\",\n  \"phone\": \"+96279000001\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/customers", "host": ["http://localhost:8080"], "path": ["api","customers"] }
+          }
+        },
+        {
+          "name": "Create Customer - Invalid Email - Expect 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+            "pm.test('Has error body', () => pm.expect(pm.response.json().error).to.exist);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bad User\",\n  \"email\": \"not-an-email\",\n  \"phone\": \"+1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/customers", "host": ["http://localhost:8080"], "path": ["api","customers"] }
+          }
+        },
+        {
+          "name": "Replace Customer - ADMIN",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Name updated', () => pm.expect(pm.response.json().name).to.equal('Updated Name'));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"test.new99@example.com\",\n  \"phone\": \"+96279000002\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/customers/{{createdCustomerId}}", "host": ["http://localhost:8080"], "path": ["api","customers","{{createdCustomerId}}"] }
+          }
+        },
+        {
+          "name": "Replace Customer as CUSTOMER - Expect 403",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 403 Forbidden', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Hacker\",\n  \"email\": \"hack@x.com\",\n  \"phone\": \"+1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/customers/{{customerId}}", "host": ["http://localhost:8080"], "path": ["api","customers","{{customerId}}"] }
+          }
+        },
+        {
+          "name": "Link User to Customer - ADMIN",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/customers/{{createdCustomerId}}/user", "host": ["http://localhost:8080"], "path": ["api","customers","{{createdCustomerId}}","user"] }
+          }
+        },
+        {
+          "name": "Link User - Already Linked - Expect 409",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 409 Conflict', () => pm.response.to.have.status(409));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"customer1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/customers/{{customerId}}/user", "host": ["http://localhost:8080"], "path": ["api","customers","{{customerId}}","user"] }
+          }
+        },
+        {
+          "name": "Delete Customer - ADMIN",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 204 No Content', () => pm.response.to.have.status(204));"
+          ]}}],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": { "raw": "http://localhost:8080/api/customers/{{createdCustomerId}}", "host": ["http://localhost:8080"], "path": ["api","customers","{{createdCustomerId}}"] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Orders",
+      "item": [
+        {
+          "name": "Get Orders for Customer",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+            "var orders = pm.response.json();",
+            "if (orders.length > 0) pm.collectionVariables.set('newOrderId', orders[0].id);"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerToken}}" }],
+            "url": { "raw": "http://localhost:8080/api/customers/{{customerId}}/orders", "host": ["http://localhost:8080"], "path": ["api","customers","{{customerId}}","orders"] }
+          }
+        },
+        {
+          "name": "Get Orders - Filter by Status",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerToken}}" }],
+            "url": {
+              "raw": "http://localhost:8080/api/customers/{{customerId}}/orders?status=PENDING",
+              "host": ["http://localhost:8080"], "path": ["api","customers","{{customerId}}","orders"],
+              "query": [{ "key": "status", "value": "PENDING" }]
+            }
+          }
+        },
+        {
+          "name": "Get Orders - Sort and Paginate",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerToken}}" }],
+            "url": {
+              "raw": "http://localhost:8080/api/customers/{{customerId}}/orders?sort=oldest&page=0&size=5",
+              "host": ["http://localhost:8080"], "path": ["api","customers","{{customerId}}","orders"],
+              "query": [
+                { "key": "sort", "value": "oldest" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "5" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Orders - Unknown Param Ignored",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200 - unknown param ignored', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerToken}}" }],
+            "url": {
+              "raw": "http://localhost:8080/api/customers/{{customerId}}/orders?fooParam=bar",
+              "host": ["http://localhost:8080"], "path": ["api","customers","{{customerId}}","orders"],
+              "query": [{ "key": "fooParam", "value": "bar" }]
+            }
+          }
+        },
+        {
+          "name": "Get Other Customer Orders - Expect 403",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 403 Forbidden', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerToken}}" }],
+            "url": { "raw": "http://localhost:8080/api/customers/4/orders", "host": ["http://localhost:8080"], "path": ["api","customers","4","orders"] }
+          }
+        },
+        {
+          "name": "Update Order Status",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SHIPPED\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/orders/{{newOrderId}}/status", "host": ["http://localhost:8080"], "path": ["api","orders","{{newOrderId}}","status"] }
+          }
+        },
+        {
+          "name": "Update Other Customer Order - Expect 403",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 403 Forbidden', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SHIPPED\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/orders/5/status", "host": ["http://localhost:8080"], "path": ["api","orders","5","status"] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Tickets",
+      "item": [
+        {
+          "name": "Get Tickets for Customer",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Returns array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerToken}}" }],
+            "url": { "raw": "http://localhost:8080/api/customers/{{customerId}}/tickets", "host": ["http://localhost:8080"], "path": ["api","customers","{{customerId}}","tickets"] }
+          }
+        },
+        {
+          "name": "Get Tickets - Filter by Status and Priority",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerToken}}" }],
+            "url": {
+              "raw": "http://localhost:8080/api/customers/{{customerId}}/tickets?status=OPEN&priority=HIGH&sort=newest&page=0&size=10",
+              "host": ["http://localhost:8080"], "path": ["api","customers","{{customerId}}","tickets"],
+              "query": [
+                { "key": "status",   "value": "OPEN" },
+                { "key": "priority", "value": "HIGH" },
+                { "key": "sort",     "value": "newest" },
+                { "key": "page",     "value": "0" },
+                { "key": "size",     "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Other Customer Tickets - Expect 403",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 403 Forbidden', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{customerToken}}" }],
+            "url": { "raw": "http://localhost:8080/api/customers/4/tickets", "host": ["http://localhost:8080"], "path": ["api","customers","4","tickets"] }
+          }
+        },
+        {
+          "name": "Create Ticket - CUSTOMER",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+            "pm.test('Has Location header', () => pm.expect(pm.response.headers.get('Location')).to.include('/api/tickets/'));",
+            "pm.test('Status is OPEN', () => pm.expect(pm.response.json().status).to.equal('OPEN'));",
+            "pm.collectionVariables.set('newTicketId', pm.response.json().id);"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"My screen is broken\",\n  \"priority\": \"HIGH\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/tickets", "host": ["http://localhost:8080"], "path": ["api","tickets"] }
+          }
+        },
+        {
+          "name": "Create Ticket - ADMIN with customerId",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 201 Created', () => pm.response.to.have.status(201));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"Admin-created ticket\",\n  \"priority\": \"LOW\",\n  \"customerId\": 3\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/tickets", "host": ["http://localhost:8080"], "path": ["api","tickets"] }
+          }
+        },
+        {
+          "name": "Create Ticket - ADMIN without customerId - Expect 400",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"Forgot customerId\",\n  \"priority\": \"LOW\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/tickets", "host": ["http://localhost:8080"], "path": ["api","tickets"] }
+          }
+        },
+        {
+          "name": "Update Ticket Status",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Status is IN_PROGRESS', () => pm.expect(pm.response.json().status).to.equal('IN_PROGRESS'));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/tickets/{{newTicketId}}/status", "host": ["http://localhost:8080"], "path": ["api","tickets","{{newTicketId}}","status"] }
+          }
+        },
+        {
+          "name": "Update Other Customer Ticket - Expect 403",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 403 Forbidden', () => pm.response.to.have.status(403));"
+          ]}}],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CLOSED\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/tickets/1/status", "host": ["http://localhost:8080"], "path": ["api","tickets","1","status"] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Register Subscriber",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 201 Created', () => pm.response.to.have.status(201));",
+            "var json = pm.response.json();",
+            "pm.test('Has id', () => pm.expect(json.id).to.be.a('string'));",
+            "pm.test('Has url', () => pm.expect(json.url).to.exist);",
+            "pm.test('Has eventType', () => pm.expect(json.eventType).to.equal('order.status_changed'));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"http://localhost:8080/api/webhooks/incoming/orders\",\n  \"eventType\": \"order.status_changed\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/webhooks/subscriptions", "host": ["http://localhost:8080"], "path": ["api","webhooks","subscriptions"] }
+          }
+        },
+        {
+          "name": "Simulated Receiver - Manual POST",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200 - receiver accepted payload', () => pm.response.to.have.status(200));"
+          ]}}],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",           "value": "application/json" },
+              { "key": "X-Digitinary-Signature", "value": "sha256=manual-test" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"order.status_changed\",\n  \"orderId\": 1,\n  \"previousStatus\": \"PENDING\",\n  \"newStatus\": \"SHIPPED\",\n  \"occurredAt\": \"2026-09-28T10:15:00Z\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "http://localhost:8080/api/webhooks/incoming/orders", "host": ["http://localhost:8080"], "path": ["api","webhooks","incoming","orders"] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "WebSocket",
+      "item": [
+        {
+          "name": "WebSocket Test Client HTML Page",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('Status 200 - HTML served', () => pm.response.to.have.status(200));",
+            "pm.test('Content-Type is HTML', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('text/html'));"
+          ]}}],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:8080/ws-client.html", "host": ["http://localhost:8080"], "path": ["ws-client.html"] }
+          }
+        }
+      ]
+    }
+  ]
+}

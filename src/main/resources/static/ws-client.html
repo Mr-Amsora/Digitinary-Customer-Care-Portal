@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Digitinary – Live Ticket Updates</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        header h1 { font-size: 1.8rem; color: #38bdf8; }
+        header p  { font-size: 0.9rem; color: #94a3b8; margin-top: 0.3rem; }
+
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card h2 { font-size: 1rem; color: #94a3b8; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 1rem;
+        }
+        .dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: #ef4444;
+            transition: background 0.3s;
+        }
+        .dot.connected { background: #22c55e; }
+        #status-text { font-size: 0.9rem; color: #94a3b8; }
+
+        button {
+            padding: 0.5rem 1.2rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.85; }
+        #btn-connect    { background: #0ea5e9; color: #fff; }
+        #btn-disconnect { background: #ef4444; color: #fff; margin-left: 0.5rem; }
+        #btn-clear      { background: #334155; color: #94a3b8; margin-left: auto; }
+
+        #feed {
+            list-style: none;
+            max-height: 420px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        #feed li {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-left: 4px solid #38bdf8;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-size: 0.85rem;
+            animation: slideIn 0.25s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0);    }
+        }
+
+        .msg-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.4rem;
+        }
+        .msg-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+            background: #0ea5e9;
+            color: #fff;
+        }
+        .msg-time { font-size: 0.75rem; color: #64748b; }
+        .msg-body  { color: #cbd5e1; font-family: monospace; white-space: pre-wrap; word-break: break-all; }
+
+        #empty-state {
+            color: #475569;
+            font-size: 0.9rem;
+            text-align: center;
+            padding: 2rem 0;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🎫 Digitinary — Live Ticket Updates</h1>
+    <p>Real-time WebSocket (STOMP) feed &rarr; <code>/topic/tickets</code></p>
+</header>
+
+
+<div class="card">
+    <h2>Connection</h2>
+    <div class="status-bar">
+        <div class="dot" id="dot"></div>
+        <span id="status-text">Disconnected</span>
+    </div>
+    <button id="btn-connect"    onclick="connect()">Connect</button>
+    <button id="btn-disconnect" onclick="disconnect()" disabled>Disconnect</button>
+</div>
+
+
+<div class="card">
+    <div style="display:flex; align-items:center; margin-bottom:1rem;">
+        <h2 style="margin:0;">Live Feed</h2>
+        <button id="btn-clear" onclick="clearFeed()">Clear</button>
+    </div>
+    <ul id="feed">
+        <li id="empty-state">No messages yet — connect and trigger a ticket event.</li>
+    </ul>
+</div>
+
+<script>
+    let stompClient = null;
+
+    function connect() {
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+        stompClient.debug = null;
+
+        stompClient.connect({}, function () {
+            setConnected(true);
+
+            stompClient.subscribe('/topic/tickets', function (frame) {
+                const msg = JSON.parse(frame.body);
+                addMessage(msg);
+            });
+        }, function (error) {
+            setConnected(false);
+            console.error('STOMP error', error);
+        });
+    }
+
+    function disconnect() {
+        if (stompClient) {
+            stompClient.disconnect();
+            stompClient = null;
+        }
+        setConnected(false);
+    }
+
+    function setConnected(connected) {
+        const dot  = document.getElementById('dot');
+        const text = document.getElementById('status-text');
+        const btnC = document.getElementById('btn-connect');
+        const btnD = document.getElementById('btn-disconnect');
+
+        dot.classList.toggle('connected', connected);
+        text.textContent = connected ? 'Connected to /topic/tickets' : 'Disconnected';
+        btnC.disabled = connected;
+        btnD.disabled = !connected;
+    }
+
+    function addMessage(msg) {
+        const feed = document.getElementById('feed');
+
+        const empty = document.getElementById('empty-state');
+        if (empty) empty.remove();
+
+        const li = document.createElement('li');
+        const time = new Date().toLocaleTimeString();
+
+        li.innerHTML = `
+            <div class="msg-header">
+                <span class="msg-badge">Ticket #${msg.ticketId}</span>
+                <span class="msg-time">${time}</span>
+            </div>
+            <div class="msg-body">${JSON.stringify(msg, null, 2)}</div>
+        `;
+
+        feed.prepend(li);
+    }
+
+    function clearFeed() {
+        const feed = document.getElementById('feed');
+        feed.innerHTML = '<li id="empty-state">No messages yet — connect and trigger a ticket event.</li>';
+    }
+</script>
+
+</body>
+</html>
