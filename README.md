@@ -270,3 +270,6 @@ Recommended run order:
 - Spring Data JPA with Hibernate
 - PostgreSQL 18
 
+## short video demo URL:
+
+- https://drive.google.com/file/d/17zvVngPn9qdlgOMftUlLBOuTWG7ak2zr/view?usp=sharing
